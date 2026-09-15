@@ -6,6 +6,7 @@
 
 **CodecFit is a device-aware media compatibility analyzer.** Paste release names or a MediaInfo report, choose your playback setup, and CodecFit explains what should play, what may fail, and which release best fits your hardware and bandwidth.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-open%20CodecFit-55d99a?style=for-the-badge&logo=githubpages&logoColor=111)](https://isharalakshan.xyz/codecfit/)
 ![React](https://img.shields.io/badge/React-TypeScript-61dafb?style=for-the-badge&logo=react&logoColor=111)
 ![Vite](https://img.shields.io/badge/Vite-client--side-646cff?style=for-the-badge&logo=vite&logoColor=white)
 ![Privacy](https://img.shields.io/badge/privacy-local%20analysis-55d99a?style=for-the-badge)
@@ -13,6 +14,8 @@
 ![CI](https://github.com/ish4ra/codecfit/actions/workflows/ci.yml/badge.svg)
 
 **Release names → parse → match device → score → explain**
+
+**Live:** https://isharalakshan.xyz/codecfit/
 
 </div>
 
@@ -241,6 +244,7 @@ src/
 - [x] Parser/scoring CI tests
 - [x] MediaInfo paste + text-report import
 - [x] Conservative named-device presets
+- [x] GitHub Pages live deployment
 - [ ] Container compatibility
 - [ ] Subtitle compatibility
 - [ ] Multiple MediaInfo audio/video track selection
