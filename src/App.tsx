@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import {
   AlertTriangle,
   BadgeCheck,
   ChevronDown,
+  FileText,
   Film,
   Gauge,
   HardDrive,
@@ -13,9 +14,11 @@ import {
   Play,
   RotateCcw,
   Sparkles,
+  Upload,
   WandSparkles,
 } from 'lucide-react'
 import { defaultProfile, deviceProfiles } from './data/devices'
+import { parseMediaInfo } from './lib/mediainfo'
 import { parseReleaseList } from './lib/parser'
 import { scoreReleaseList } from './lib/scoring'
 import { loadSetup, saveSetup } from './lib/storage'
@@ -23,10 +26,29 @@ import type { AudioCodec, CapabilitySet, HdrFormat, Resolution, UserSetup, Video
 
 const SAMPLE = `Dune.Part.Two.2024.2160p.WEB-DL.DV.HDR10.DDP5.1.Atmos.H.265-GROUP\nDune.Part.Two.2024.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-GROUP\nDune.Part.Two.2024.2160p.WEB-DL.HDR10+.AV1.EAC3.5.1-GROUP`
 
+const MEDIAINFO_SAMPLE = `General
+Complete name                            : /media/Dune.Part.Two.2024.2160p.mkv
+File size                                : 24.5 GiB
+Overall bit rate                         : 31.2 Mb/s
+
+Video
+Format                                   : HEVC
+HDR format                               : Dolby Vision, Version 1.0, dvhe.08.06, BL+RPU / SMPTE ST 2086, HDR10 compatible
+Width                                    : 3 840 pixels
+Height                                   : 2 160 pixels
+Bit rate                                 : 28.8 Mb/s
+
+Audio
+Format                                   : E-AC-3 JOC
+Commercial name                          : Dolby Digital Plus with Dolby Atmos
+Channel(s)                               : 6 channels`
+
 const resolutions: Resolution[] = ['2160p', '1080p', '720p', '576p', '480p']
 const videoCodecs: VideoCodec[] = ['AVC', 'HEVC', 'AV1', 'VP9', 'MPEG-2']
 const hdrFormats: HdrFormat[] = ['Dolby Vision', 'HDR10+', 'HDR10', 'HLG']
 const audioCodecs: AudioCodec[] = ['AAC', 'AC-3', 'E-AC-3', 'TrueHD', 'DTS', 'DTS-HD MA', 'DTS:X', 'FLAC', 'PCM']
+
+type InputMode = 'release' | 'mediainfo'
 
 function cloneCapabilities(capabilities: CapabilitySet): CapabilitySet {
   return {
@@ -53,13 +75,19 @@ function scoreTone(score: number) {
 }
 
 function App() {
+  const [inputMode, setInputMode] = useState<InputMode>('release')
   const [input, setInput] = useState(SAMPLE)
+  const [mediaInfoInput, setMediaInfoInput] = useState(MEDIAINFO_SAMPLE)
+  const [importedFileName, setImportedFileName] = useState<string>()
   const [setup, setSetup] = useState<UserSetup>(() => loadSetup() ?? initialSetup)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => saveSetup(setup), [setup])
 
-  const releases = useMemo(() => parseReleaseList(input), [input])
+  const releases = useMemo(() => {
+    if (inputMode === 'release') return parseReleaseList(input)
+    return mediaInfoInput.trim() ? [parseMediaInfo(mediaInfoInput)] : []
+  }, [inputMode, input, mediaInfoInput])
   const results = useMemo(() => scoreReleaseList(releases, setup), [releases, setup])
   const profile = deviceProfiles.find((item) => item.id === setup.profileId)
 
@@ -85,8 +113,29 @@ function App() {
     })
   }
 
+  const importMediaInfo = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    setMediaInfoInput(text)
+    setImportedFileName(file.name)
+    setInputMode('mediainfo')
+    event.target.value = ''
+  }
+
+  const useSample = () => {
+    if (inputMode === 'release') setInput(SAMPLE)
+    else {
+      setMediaInfoInput(MEDIAINFO_SAMPLE)
+      setImportedFileName(undefined)
+    }
+  }
+
   const reset = () => {
+    setInputMode('release')
     setInput(SAMPLE)
+    setMediaInfoInput(MEDIAINFO_SAMPLE)
+    setImportedFileName(undefined)
     setSetup(initialSetup)
   }
 
@@ -102,28 +151,48 @@ function App() {
 
       <main id="top">
         <section className="hero">
-          <div className="eyebrow"><Sparkles size={15} /> device-aware release analysis</div>
+          <div className="eyebrow"><Sparkles size={15} /> device-aware media analysis</div>
           <h1>Know what will play<br /><span>before you press play.</span></h1>
-          <p>Paste media release names. CodecFit decodes the tags, compares quality, checks them against your playback setup, and explains which release is the best fit.</p>
+          <p>Paste release names or MediaInfo text. CodecFit decodes the technical details, checks them against your playback setup, and explains which option fits best.</p>
           <div className="hero-pills">
-            <span>Runs locally</span><span>No uploads</span><span>No account</span><span>Open source</span>
+            <span>Runs locally</span><span>No media uploads</span><span>No account</span><span>Open source</span>
           </div>
         </section>
 
         <section className="workspace">
           <div className="panel input-panel">
             <div className="panel-heading">
-              <div><span className="step">01</span><h2>Paste releases</h2></div>
-              <button className="text-button" onClick={() => setInput(SAMPLE)}>Use sample</button>
+              <div><span className="step">01</span><h2>Analyze media</h2></div>
+              <button className="text-button" onClick={useSample}>Use sample</button>
             </div>
-            <p className="panel-copy">One release name per line. Up to 20 releases are compared at once.</p>
-            <textarea value={input} onChange={(event) => setInput(event.target.value)} spellCheck={false} aria-label="Release names" />
-            <div className="parse-summary"><WandSparkles size={16} /> {releases.length} release{releases.length === 1 ? '' : 's'} detected</div>
+
+            <div className="input-tabs" role="tablist" aria-label="Input type">
+              <button className={inputMode === 'release' ? 'input-tab active' : 'input-tab'} onClick={() => setInputMode('release')}><Film size={15} /> Release names</button>
+              <button className={inputMode === 'mediainfo' ? 'input-tab active' : 'input-tab'} onClick={() => setInputMode('mediainfo')}><FileText size={15} /> MediaInfo</button>
+            </div>
+
+            {inputMode === 'release' ? (
+              <>
+                <p className="panel-copy">One release name per line. Up to 20 releases are compared at once.</p>
+                <textarea value={input} onChange={(event) => setInput(event.target.value)} spellCheck={false} aria-label="Release names" />
+                <div className="parse-summary"><WandSparkles size={16} /> {releases.length} release{releases.length === 1 ? '' : 's'} detected</div>
+              </>
+            ) : (
+              <>
+                <p className="panel-copy">Paste MediaInfo text output or import a saved `.txt` / `.nfo` report. CodecFit uses the first video and audio tracks for V2 analysis.</p>
+                <textarea className="mediainfo-textarea" value={mediaInfoInput} onChange={(event) => { setMediaInfoInput(event.target.value); setImportedFileName(undefined) }} spellCheck={false} aria-label="MediaInfo text" />
+                <div className="file-row">
+                  <label className="file-button"><Upload size={14} /> Import report<input type="file" accept=".txt,.nfo,text/plain" onChange={importMediaInfo} /></label>
+                  <span className="file-name">{importedFileName ?? 'Text stays in your browser'}</span>
+                </div>
+                <div className="parse-summary"><WandSparkles size={16} /> {releases.length ? 'MediaInfo parsed' : 'Paste a MediaInfo report to begin'}</div>
+              </>
+            )}
           </div>
 
           <div className="panel setup-panel">
             <div className="panel-heading"><div><span className="step">02</span><h2>Your playback setup</h2></div></div>
-            <p className="panel-copy">Presets are examples, not device certifications. Refine them when you know your exact capabilities.</p>
+            <p className="panel-copy">Official-spec profiles are conservative starting points, not playback certifications. Refine them for your actual player, display and audio chain.</p>
 
             <label className="field-label" htmlFor="profile">Starting profile</label>
             <select id="profile" value={setup.profileId === 'custom' ? '' : setup.profileId} onChange={(event) => chooseProfile(event.target.value)}>
@@ -169,12 +238,12 @@ function App() {
 
         <section className="results-section">
           <div className="results-heading">
-            <div><span className="step">03</span><h2>Best fit</h2><p>Ranked by compatibility, quality and bandwidth headroom.</p></div>
+            <div><span className="step">03</span><h2>{inputMode === 'release' ? 'Best fit' : 'Compatibility result'}</h2><p>{inputMode === 'release' ? 'Ranked by compatibility, quality and bandwidth headroom.' : 'MediaInfo gives CodecFit more precise metadata than a release name alone.'}</p></div>
             <button className="reset-button" onClick={reset}><RotateCcw size={15} /> Reset</button>
           </div>
 
           {results.length === 0 ? (
-            <div className="empty-state"><Film size={30} /><h3>Paste a release name to begin</h3><p>CodecFit works from filenames only. It never uploads or fetches media.</p></div>
+            <div className="empty-state"><Film size={30} /><h3>Add media metadata to begin</h3><p>CodecFit analyzes text metadata locally. It never uploads or fetches the media itself.</p></div>
           ) : (
             <div className="results-list">
               {results.map((result, index) => (
@@ -186,13 +255,13 @@ function App() {
                   <div className="result-main">
                     <div className="result-topline">
                       <div>
-                        {index === 0 && <span className="best-badge"><BadgeCheck size={14} /> Best match</span>}
+                        {index === 0 && <span className="best-badge"><BadgeCheck size={14} /> {inputMode === 'release' ? 'Best match' : 'Analyzed file'}</span>}
                         <h3>{result.release.title}{result.release.year ? ` (${result.release.year})` : ''}</h3>
                       </div>
-                      <span className="bitrate">~{result.estimatedBitrateMbps} Mbps est.</span>
+                      <span className="bitrate">~{result.estimatedBitrateMbps} Mbps {result.release.bitrateMbps ? 'reported' : 'est.'}</span>
                     </div>
                     <div className="tag-row">
-                      {[result.release.resolution, result.release.source, result.release.videoCodec, ...result.release.hdr, result.release.audioCodec, result.release.channels, result.release.atmos ? 'Atmos' : undefined]
+                      {[result.release.resolution, result.release.source !== 'unknown' ? result.release.source : undefined, result.release.videoCodec, ...result.release.hdr, result.release.audioCodec, result.release.channels, result.release.atmos ? 'Atmos' : undefined]
                         .filter(Boolean)
                         .map((tag) => <span className="media-tag" key={String(tag)}>{tag}</span>)}
                     </div>
@@ -217,14 +286,14 @@ function App() {
         </section>
 
         <section className="how-it-works">
-          <div><MonitorPlay /><h3>Parse</h3><p>Resolution, source, codec, HDR, audio, channels and release-group hints.</p></div>
-          <div><HardDrive /><h3>Match</h3><p>Your selected capabilities are compared against every detected tag.</p></div>
+          <div><MonitorPlay /><h3>Parse</h3><p>Release tags or MediaInfo fields become normalized video, HDR, audio and bitrate metadata.</p></div>
+          <div><HardDrive /><h3>Match</h3><p>Your selected capabilities are compared against every detected technical property.</p></div>
           <div><Gauge /><h3>Rank</h3><p>A transparent heuristic balances compatibility, quality and bandwidth.</p></div>
         </section>
 
         <section className="disclaimer">
           <Info size={18} />
-          <div><strong>Compatibility is a prediction, not a certification.</strong><br />Real playback can depend on codec profiles, containers, subtitle formats, firmware, player choice, HDMI/eARC, passthrough and fallback behavior that a release name cannot fully describe. Use MediaInfo or actual device documentation when you need certainty.</div>
+          <div><strong>Compatibility is a prediction, not a certification.</strong><br />MediaInfo improves accuracy, but real playback can still depend on codec profiles/levels, containers, subtitle formats, Dolby Vision profiles, firmware, player choice, HDMI/eARC, passthrough and fallback behavior. Exact device documentation and real playback testing remain the source of truth.</div>
         </section>
       </main>
 
