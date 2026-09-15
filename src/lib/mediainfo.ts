@@ -22,7 +22,10 @@ function field(block: string, name: string): string | undefined {
 
 function cleanNumber(value?: string): number | undefined {
   if (!value) return undefined
-  const match = value.replace(/,/g, '').match(/([\d.]+)/)
+  const normalized = value
+    .replace(/,/g, '')
+    .replace(/(\d)\s+(?=\d)/g, '$1')
+  const match = normalized.match(/([\d.]+)/)
   if (!match) return undefined
   const number = Number(match[1])
   return Number.isFinite(number) ? number : undefined
