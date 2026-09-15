@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Film,
   Gauge,
-  Github,
   HardDrive,
   Info,
   MonitorPlay,
@@ -98,9 +97,7 @@ function App() {
           <span className="brand-mark"><Play size={15} fill="currentColor" /></span>
           <span>CodecFit</span>
         </a>
-        <a className="github-link" href="https://github.com/ish4ra/codecfit" target="_blank" rel="noreferrer">
-          <Github size={17} /> GitHub
-        </a>
+        <a className="github-link" href="https://github.com/ish4ra/codecfit" target="_blank" rel="noreferrer">GitHub ↗</a>
       </header>
 
       <main id="top">
