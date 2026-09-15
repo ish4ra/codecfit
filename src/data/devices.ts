@@ -93,4 +93,4 @@ export const deviceProfiles: DeviceProfile[] = [
   },
 ]
 
-export const defaultProfile = deviceProfiles[0]
+export const defaultProfile = deviceProfiles.find((profile) => profile.id === 'balanced-4k') ?? deviceProfiles[0]
