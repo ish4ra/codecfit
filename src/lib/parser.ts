@@ -73,7 +73,7 @@ function parseNumber(raw: string, pattern: RegExp): number | undefined {
 export function parseRelease(rawInput: string): ParsedRelease {
   const raw = rawInput.trim()
   const { title, year } = cleanTitle(raw)
-  const channels = raw.match(/\b(7\.1(?:\.\d)?|5\.1(?:\.\d)?|2\.0|2\.1|1\.0)\b/i)?.[1]
+  const channels = raw.match(/(7\.1(?:\.\d)?|5\.1(?:\.\d)?|2\.0|2\.1|1\.0)/i)?.[1]
   const groupMatch = raw.match(/-([A-Za-z0-9][A-Za-z0-9._-]{1,30})$/)
 
   return {
