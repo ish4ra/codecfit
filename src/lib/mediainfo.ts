@@ -16,8 +16,16 @@ function section(raw: string, name: string): string {
 }
 
 function field(block: string, name: string): string | undefined {
-  const match = block.match(new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\s*:\\s*(.+)$`, 'im'))
-  return match?.[1]?.trim()
+  const target = name.trim().toLowerCase()
+  for (const line of block.replace(/\r/g, '').split('\n')) {
+    const separator = line.indexOf(':')
+    if (separator < 0) continue
+    const key = line.slice(0, separator).trim().toLowerCase()
+    if (key !== target) continue
+    const value = line.slice(separator + 1).trim()
+    return value || undefined
+  }
+  return undefined
 }
 
 function cleanNumber(value?: string): number | undefined {
